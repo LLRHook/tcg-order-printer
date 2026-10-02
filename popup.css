@@ -1,0 +1,7 @@
+:root { --bg: #fff; --text: #1d2420; --muted: #5b655f; --accent: #147d45; --accent-text: #fff; --bad: #b3261e; }
+@media (prefers-color-scheme: dark) { :root { --bg: #1e2320; --text: #e6ebe7; --muted: #a2ada6; --accent: #3fae6e; --accent-text: #0d1a12; --bad: #f2867c; } }
+body { margin: 0; width: 260px; padding: 12px; background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, sans-serif; }
+p { margin: 8px 0; } .muted { color: var(--muted); font-size: 12px; } .bad { color: var(--bad); }
+.actions { display: flex; gap: 8px; }
+button { font: inherit; font-weight: 600; border-radius: 6px; padding: 5px 10px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
+button.secondary { background: transparent; color: var(--accent); }

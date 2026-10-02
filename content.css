@@ -1,0 +1,11 @@
+.customer-details__actions > .tcg-popover.tcgprint-group { display: inline-flex; align-items: center; gap: 0; flex: 0 0 auto; vertical-align: middle; }
+.customer-details__actions > .tcg-popover.tcgprint-group > .tcg-popover__trigger { width: max-content; min-width: 0; flex: 0 0 auto; }
+.customer-details__actions > .tcg-popover.tcgprint-group > #tcgprint-controls { margin-left: 10px; }
+#tcgprint-controls { display: inline-flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; flex: 0 0 auto; }
+#tcgprint-button { box-sizing: border-box; height: 42px; font: inherit; font-weight: 600; border: 1px solid #115c35; border-radius: 4px; background: #147d45; color: #fff; padding: 8px 12px; cursor: pointer; white-space: nowrap; }
+#tcgprint-button:disabled { opacity: .55; cursor: progress; }
+#tcgprint-button:focus-visible { outline: 2px solid #147d45; outline-offset: 3px; }
+#tcgprint-status { font: 12px/1.4 system-ui, sans-serif; }
+#tcgprint-status:empty { display: none; }
+#tcgprint-status.tcgprint-error { color: #a02626; }
+#tcgprint-status .tcgprint-setup { font: inherit; font-weight: 600; color: #a02626; background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }

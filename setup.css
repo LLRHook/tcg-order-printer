@@ -1,0 +1,28 @@
+:root { --bg: #f6f7f5; --card: #fff; --text: #1d2420; --muted: #5b655f; --border: #d9ddd9; --accent: #147d45; --accent-text: #fff; --ok: #147d45; --bad: #b3261e; --wait: #9a7b00; --code: #eef1ee; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #151816; --card: #1e2320; --text: #e6ebe7; --muted: #a2ada6; --border: #343b37; --accent: #3fae6e; --accent-text: #0d1a12; --ok: #4cc27d; --bad: #f2867c; --wait: #e0c24a; --code: #262c28; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 40px 16px 32px; }
+header { display: flex; gap: 14px; align-items: center; margin-bottom: 24px; }
+h1 { font-size: 24px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 4px; }
+.lede, p { color: var(--muted); margin: 0 0 10px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 28px; }
+.status-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--wait); flex: none; }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); }
+.steps { padding-left: 22px; margin: 0; }
+.steps li { margin-bottom: 22px; }
+.steps li::marker { font-weight: 700; }
+pre { background: var(--code); border-radius: 8px; padding: 12px; overflow-x: auto; margin: 0 0 8px; font-size: 13px; }
+code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.id-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.id-row code { background: var(--code); border-radius: 6px; padding: 6px 10px; overflow-wrap: anywhere; }
+button { font: inherit; font-weight: 600; border-radius: 6px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
+button.secondary { background: transparent; color: var(--accent); }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); padding-top: 14px; margin-top: 8px; }
+footer #version { float: right; }

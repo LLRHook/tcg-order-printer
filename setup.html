@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TCG Order Printer setup</title>
+<link rel="stylesheet" href="setup.css">
+</head>
+<body>
+<main>
+  <header>
+    <img src="icons/icon-128.png" alt="" width="48" height="48">
+    <div>
+      <h1>TCG Order Printer</h1>
+      <p class="lede">One click on a TCGplayer order prints the official packing slip and a matching 4×6 address label.</p>
+    </div>
+  </header>
+
+  <section id="status-card" class="card" aria-live="polite">
+    <div class="status-row"><span id="status-dot" class="dot"></span><strong id="status-title">Checking the print helper…</strong></div>
+    <p id="status-detail"></p>
+    <button id="check" type="button">Check connection</button>
+  </section>
+
+  <ol class="steps">
+    <li>
+      <h2>Install the print helper</h2>
+      <p>The helper is a small app on your Mac that sends labels to your printer without a print dialog. It needs macOS and Python 3.10+ (<a href="https://www.python.org/downloads/macos/" target="_blank" rel="noopener">python.org</a>). In Terminal, run:</p>
+      <pre><code id="install-cmd">git clone https://github.com/LLRHook/tcg-order-printer-helper.git
+cd tcg-order-printer-helper
+./install.sh</code></pre>
+      <button type="button" class="secondary" data-copy="install-cmd">Copy commands</button>
+    </li>
+    <li>
+      <h2>Answer the setup wizard</h2>
+      <p>Pick your label printer, enter your return address, and paste this extension ID when asked:</p>
+      <div class="id-row"><code id="extension-id"></code><button type="button" class="secondary" data-copy="extension-id">Copy ID</button></div>
+    </li>
+    <li>
+      <h2>Restart your browser and check the connection</h2>
+      <p>Then open any order in the TCGplayer Seller Portal and click <strong>Print both</strong> next to Packing Slip.</p>
+    </li>
+  </ol>
+
+  <footer>
+    <a href="https://github.com/LLRHook/tcg-order-printer" target="_blank" rel="noopener">Source &amp; help</a> ·
+    <a href="https://github.com/LLRHook/tcg-order-printer/issues" target="_blank" rel="noopener">Report a problem</a> ·
+    <a href="https://github.com/LLRHook/tcg-order-printer/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a>
+    <span id="version"></span>
+  </footer>
+</main>
+<script src="setup.js"></script>
+</body>
+</html>

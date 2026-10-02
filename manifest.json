@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "TCG Order Printer",
+  "version": "1.1.0",
+  "description": "One click on a TCGplayer order prints the official packing slip and a matching 4x6 address label to your label printer.",
+  "homepage_url": "https://github.com/LLRHook/tcg-order-printer",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAk9UIvXoZ+6di0eJpFq9AC1k4ARi29fnBrYOpcAOpLYq5Z37IhwVv4HSIV011nSl0bg/McTIxV2bDdYQhcAKguYrmSUwZVjb3rTGUAniKdy6a132cczherp8qM/gIjzLdUjIr6hHrpFS8EWxR4SOVRNAVH5RHrCMGWL+wiWQuqVbhDoq1KWwChtON/Phk6xnBWK0VsoJWOcn4Z3d2uhz8+OB3bzznAnEkDfSjsBEivqx5Vs59fSEMvWDHY2q+DaQ27za0Sw9MviZ4rLGtwIgo5tg/t02onPPXo8pdeqbbkYoWJEQzTvvKrqno2H6sKidIUURbDScQTLdB4WSbCirrGwIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://sellerportal.tcgplayer.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://sellerportal.tcgplayer.com/*"
+      ],
+      "js": [
+        "pdf-bridge.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://sellerportal.tcgplayer.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "TCG Order Printer",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "options_page": "setup.html"
+}
