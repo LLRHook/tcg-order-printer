@@ -3,3 +3,4 @@ dist/
 .DS_Store
 # Real packing slips contain buyer addresses.
 *.pdf
+!tests/fixtures/*.pdf

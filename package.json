@@ -4,6 +4,10 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "package": "sh scripts/package.sh"
+    "package": "sh scripts/package.sh",
+    "e2e": "node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
   }
 }

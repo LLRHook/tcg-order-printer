@@ -34,6 +34,7 @@ Order data stays on your computer. See [PRIVACY.md](PRIVACY.md).
 
 ```sh
 npm test              # unit tests (node:test)
+npm run e2e           # browser test against the installed helper (prints nothing)
 npm run package       # dist/tcg-order-printer-<version>.zip for the Chrome Web Store
 ```
 
