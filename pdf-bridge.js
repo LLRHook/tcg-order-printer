@@ -8,19 +8,18 @@
   const FILE = /^TCGplayer_PackingSlips_[A-Za-z0-9_ -]+(?:\s*\(\d+\))?\.pdf$/i;
   let active = null;
   const blobs = new Map();
-  const live = () => active && Date.now() < active.expires;
-  async function transfer(blob, filename = 'TCGplayer_PackingSlips_native.pdf') {
-    const request = active;
-    if (!live() || request.sent || request.reading || !(blob instanceof Blob) || blob.size > MAX || blob.size < 5) return;
-    request.reading = true;
-    try {
-      const bytes = new Uint8Array(await blob.arrayBuffer());
-      if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-' || active !== request || !live()) return;
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
-      request.sent = true;
-      window.postMessage({ type: 'TCGPRINT_PDF_BRIDGE', token: request.token, orderId: request.orderId, filename, pdfBase64: btoa(binary) }, location.origin);
-    } finally { request.reading = false; }
+  const live = (request = active) => request && active === request && Date.now() < request.expires;
+  async function transfer(blob, filename = 'TCGplayer_PackingSlips_native.pdf', request = active) {
+    if (!live(request) || request.sent || !(blob instanceof Blob) || blob.size > MAX || blob.size < 5 || request.seen.has(blob)) return;
+    request.seen.add(blob);
+    // Reads may overlap: a slow or non-PDF response must not discard the actual
+    // slip. Recheck after reading so only the first valid PDF is ever emitted.
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-' || !live(request) || request.sent) return;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 32768) binary += String.fromCharCode(...bytes.subarray(i, i + 32768));
+    request.sent = true;
+    window.postMessage({ type: 'TCGPRINT_PDF_BRIDGE', token: request.token, orderId: request.orderId, filename, pdfBase64: btoa(binary) }, location.origin);
   }
   function candidate(blob) {
     return blob instanceof Blob && blob.size <= MAX && blob.size >= 5 && (!blob.type || /pdf|octet-stream/i.test(blob.type));
@@ -36,7 +35,8 @@
     if (event.source !== window || event.origin !== location.origin) return;
     const msg = event.data;
     if (msg?.type === 'TCGPRINT_ARM_BRIDGE' && /^[a-f0-9-]{36}$/i.test(msg.token) && ORDER.test(msg.orderId)) {
-      active = { token: msg.token, orderId: msg.orderId, expires: Date.now() + 90000, sent: false, reading: false };
+      blobs.clear();
+      active = { token: msg.token, orderId: msg.orderId, expires: Date.now() + 90000, sent: false, seen: new WeakSet() };
       window.postMessage({ type: 'TCGPRINT_BRIDGE_READY', token: msg.token }, location.origin);
     } else if (msg?.type === 'TCGPRINT_DISARM' && active?.token === msg.token) {
       // Let the site's trailing FileSaver click be suppressed after a successful
@@ -71,18 +71,20 @@
   }, true);
   const originalFetch = window.fetch;
   window.fetch = async function (...args) {
+    const request = active;
     const response = await originalFetch.apply(this, args);
-    if (live() && /pdf|octet-stream/i.test(response.headers.get('content-type') || '')) {
-      response.clone().blob().then(blob => transfer(blob)).catch(() => {});
+    if (live(request) && /pdf|octet-stream/i.test(response.headers.get('content-type') || '')) {
+      response.clone().blob().then(blob => transfer(blob, undefined, request)).catch(() => {});
     }
     return response;
   };
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function (...args) {
-    if (live()) this.addEventListener('load', () => {
-      if (!live()) return;
-      if (candidate(this.response)) transfer(this.response).catch(() => {});
-      else if (this.response instanceof ArrayBuffer && this.response.byteLength <= MAX) transfer(new Blob([this.response])).catch(() => {});
+    const request = active;
+    if (live(request)) this.addEventListener('load', () => {
+      if (!live(request)) return;
+      if (candidate(this.response)) transfer(this.response, undefined, request).catch(() => {});
+      else if (this.response instanceof ArrayBuffer && this.response.byteLength <= MAX) transfer(new Blob([this.response]), undefined, request).catch(() => {});
     }, { once: true });
     return originalSend.apply(this, args);
   };
