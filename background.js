@@ -9,6 +9,10 @@ async function trustedOrder(message, sender) {
   if (sender.id !== chrome.runtime.id || sender.frameId !== 0 || !Number.isInteger(sender.tab?.id)) return null;
   if (urlOrigin(sender.url) !== SELLER_ORIGIN || (sender.origin !== undefined && sender.origin !== SELLER_ORIGIN)) return null;
   if (typeof message.orderId !== 'string' || !ORDER_RE.test(message.orderId)) return null;
+  // SPA navigation may change the live order before the content script can
+  // cancel. Cancellation only clears state; the pending token, tab, and
+  // document are still checked below before it is allowed.
+  if (message.type === 'TCGPRINT_CANCEL') return message.orderId;
   let liveTab = null;
   try { liveTab = await chrome.tabs.get(sender.tab.id); } catch {}
   const liveOrder = orderFromUrl(liveTab?.url || '');
