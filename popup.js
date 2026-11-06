@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const STATES = { completed: 'printed', submitted: 'sent to printer', duplicate: 'already printed' };
+const STATES = { completed: 'printed', submitted: 'sent to printer', duplicate: 'already sent' };
 async function lastResult() {
   try {
     const { lastResult: r } = await chrome.storage.local.get('lastResult');
