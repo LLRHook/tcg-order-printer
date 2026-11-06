@@ -32,9 +32,13 @@ test('eligibleDownload matches only an armed, fresh, official packing slip', () 
 });
 
 test('describeError maps Chrome and helper errors to setup guidance', () => {
-  assert.deepEqual(describeError('Specified native messaging host not found.'), { code: 'HELPER_NOT_INSTALLED', message: 'The print helper is not installed.', setup: true });
+  assert.equal(describeError('Specified native messaging host not found.').code, 'HELPER_NOT_INSTALLED');
+  assert.match(describeError('Specified native messaging host not found.').message, /install.sh/);
   assert.equal(describeError('Access to the specified native messaging host is forbidden.').code, 'EXTENSION_NOT_ALLOWED');
   assert.equal(describeError('PRINTER_QUEUE_UNAVAILABLE').setup, true);
-  assert.deepEqual(describeError('PDF_ORDER_MISMATCH'), { code: 'PDF_ORDER_MISMATCH', message: 'The packing slip is for a different order.', setup: false });
-  assert.equal(describeError('Something else').message, 'Something else');
+  assert.equal(describeError('PDF_ORDER_MISMATCH').code, 'PDF_ORDER_MISMATCH');
+  assert.match(describeError('PDF_ORDER_MISMATCH').message, /Refresh the correct order/);
+  assert.equal(describeError('Something else').code, 'LOCAL_PRINT_HELPER_ERROR');
+  assert.equal(describeError('FUTURE_STABLE_CODE').code, 'FUTURE_STABLE_CODE');
+  assert.match(describeError('FUTURE_STABLE_CODE').message, /queue/);
 });

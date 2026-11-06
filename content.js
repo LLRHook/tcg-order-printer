@@ -5,6 +5,7 @@
   const HEADER = '[data-testid="txtOrderHeader"]';
   const IDLE_LABEL = 'Print the official packing slip and matching address label';
   let active = null;
+  let resultSequence = 0;
   function orderId() {
     const path = location.pathname.match(/^\/orders\/([^/]+)\/?$/);
     const heading = document.querySelector(HEADER)?.textContent.trim().match(/^Order:\s*([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+)/i);
@@ -25,7 +26,8 @@
         link.textContent = 'Finish setup';
         link.addEventListener('click', () => chrome.runtime.sendMessage({ type: 'TCGPRINT_OPEN_SETUP' }).catch(() => {}));
         el.append(link);
-      } else el.textContent = 'Print failed';
+      }
+      const detail = document.createElement('span'); detail.textContent = message; el.append(detail);
       el.title = message; el.classList.add('tcgprint-error');
     }
     const button = document.getElementById('tcgprint-button');
@@ -37,9 +39,10 @@
     const button = document.getElementById('tcgprint-button');
     if (button && active) { button.textContent = 'Printing…'; button.title = text; }
   }
-  async function waitFor(selector, timeout = 5000) {
+  async function waitFor(selector, request, timeout = 5000) {
     const start = Date.now();
     while (Date.now() - start < timeout) {
+      ensureCurrent(request);
       const found = [...document.querySelectorAll(selector)].filter(el => el.getClientRects().length && !el.disabled);
       if (found.length === 1) return found[0];
       if (found.length > 1) throw new Error('The Print Default control is ambiguous.');
@@ -47,69 +50,114 @@
     }
     throw new Error('The Print Default control was not found.');
   }
-  function finish(result) {
+  function ensureCurrent(request) {
+    if (active !== request) throw new Error('The print request was cancelled.');
+    let current;
+    try { current = orderId(); } catch {}
+    if (current !== request.orderId) throw new Error('The order page changed. Open the correct order and click Print both again.');
+  }
+  function cancel(request, message) {
+    if (active !== request) return;
+    chrome.runtime.sendMessage({ type: 'TCGPRINT_CANCEL', orderId: request.orderId, token: request.token }).catch(() => {});
+    finish({ ok: false, error: request.phase === 'handoff'
+      ? 'The helper has not confirmed this request. Check the printer queue before trying again.' : message }, request);
+  }
+  function checkPage() {
     if (!active) return;
-    window.postMessage({ type: 'TCGPRINT_DISARM', token: active.token }, location.origin);
-    clearTimeout(active.timeout); active = null;
-    const button = document.getElementById('tcgprint-button'); if (button) { button.disabled = false; button.setAttribute('aria-busy', 'false'); }
-    if (!result.ok) { showError(result.error || 'Printing failed.', result.setup); return; }
+    const request = active;
+    try { ensureCurrent(request); }
+    catch { cancel(request, 'The order page changed. Open the correct order and click Print both again.'); }
+  }
+  function finish(result, request = active) {
+    if (!request || active !== request) return;
+    window.postMessage({ type: 'TCGPRINT_DISARM', token: request.token }, location.origin);
+    clearTimeout(request.timeout); clearInterval(request.pageCheck);
+    active = null;
+    request.cancelReady?.();
+    const sequence = ++resultSequence;
+    const button = document.getElementById('tcgprint-button');
+    if (button) { button.disabled = false; button.setAttribute('aria-busy', 'false'); }
+    if (!result?.ok) { showError(result?.error || 'Printing failed. Check the printer queue before retrying.', result?.setup); return; }
     if (button) {
-      button.textContent = result.state === 'duplicate' ? 'Already printed' : result.state === 'submitted' ? 'Sent ✓' : 'Printed ✓';
-      button.setAttribute('aria-label', result.state === 'submitted' ? 'Packing slip and address label submitted' : 'Packing slip and address label printed');
-      button.title = result.state === 'duplicate' ? 'This click was already printed; duplicate skipped.' : result.state === 'completed' ? 'Packing slip and address label printed.' : 'Both pages sent to the printer.';
+      button.textContent = result.state === 'duplicate' ? 'Already sent' : result.state === 'submitted' ? 'Sent ✓' : 'Printed ✓';
+      button.setAttribute('aria-label', result.state === 'completed' ? 'Packing slip and address label printed' : 'Packing slip and address label submitted');
+      button.title = result.state === 'duplicate' ? 'This request was already handled. Check the printer queue; no duplicate was submitted.' : result.state === 'completed' ? 'Packing slip and address label printed.' : 'Both pages sent to the printer.';
     }
     showProgress('');
-    setTimeout(() => { if (button && !active) resetButton(button); }, 5000);
+    setTimeout(() => { if (button && !active && resultSequence === sequence) resetButton(button); }, 5000);
+  }
+  function readyBridge(request) {
+    return new Promise((resolve, reject) => {
+      const cleanup = () => { clearTimeout(timer); window.removeEventListener('message', ready); request.cancelReady = null; };
+      const timer = setTimeout(() => { cleanup(); reject(new Error('The PDF capture bridge did not start. Refresh this page.')); }, 2000);
+      function ready(event) {
+        if (event.source === window && event.origin === location.origin && event.data?.type === 'TCGPRINT_BRIDGE_READY' && event.data.token === request.token) {
+          cleanup(); resolve();
+        }
+      }
+      request.cancelReady = () => { cleanup(); reject(new Error('The print request was cancelled.')); };
+      window.addEventListener('message', ready);
+      window.postMessage({ type: 'TCGPRINT_ARM_BRIDGE', token: request.token, orderId: request.orderId }, location.origin);
+    });
   }
   async function printPair(button) {
+    // A disabled button still receives synthetic dispatchEvent clicks. Own the
+    // request before the first await so a second handler cannot start an export.
+    if (active || button.disabled) return;
     button.disabled = true; button.setAttribute('aria-busy', 'true'); button.setAttribute('aria-label', 'Printing packing slip and address label');
+    let request;
     try {
       const id = orderId(); const token = crypto.randomUUID();
+      request = { orderId: id, token, phase: 'arming' }; active = request;
+      request.pageCheck = setInterval(checkPage, 100);
+      request.timeout = setTimeout(() => cancel(request, 'No packing slip arrived from TCGplayer. Refresh the order page and try again.'), 95000);
       const response = await chrome.runtime.sendMessage({ type: 'TCGPRINT_ARM', orderId: id, token, clientVersion: VERSION });
-      if (!response?.ok) { const error = new Error(response?.error || 'The print helper is unavailable.'); error.setup = response?.setup; throw error; }
+      ensureCurrent(request);
+      if (!response?.ok) { const error = new Error(response?.error || 'The print helper is unavailable. Open Setup and check the connection.'); error.setup = response?.setup; throw error; }
       if (response.extensionVersion !== VERSION) throw new Error('The extension was updated. Refresh this page.');
-      active = { orderId: id, token, timeout: setTimeout(() => {
-        const old = active;
-        if (old) chrome.runtime.sendMessage({ type: 'TCGPRINT_CANCEL', orderId: old.orderId, token: old.token }).catch(() => {});
-        finish({ ok: false, error: 'No packing slip arrived from TCGplayer. Nothing was printed.' });
-      }, 95000) };
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { window.removeEventListener('message', ready); reject(new Error('The PDF capture bridge did not start. Refresh this page.')); }, 2000);
-        function ready(event) {
-          if (event.source === window && event.origin === location.origin && event.data?.type === 'TCGPRINT_BRIDGE_READY' && event.data.token === token) { clearTimeout(timer); window.removeEventListener('message', ready); resolve(); }
-        }
-        window.addEventListener('message', ready);
-        window.postMessage({ type: 'TCGPRINT_ARM_BRIDGE', token, orderId: id }, location.origin);
-      });
+      request.phase = 'capturing';
+      await readyBridge(request);
+      ensureCurrent(request);
       showProgress('Getting the official packing slip…');
       if (!document.querySelector(DEFAULT)?.getClientRects().length) {
         const controls = document.querySelectorAll(PACKING);
-        if (controls.length !== 1) throw new Error('The Packing Slip control is missing or ambiguous.');
+        if (controls.length !== 1) throw new Error('The Packing Slip control is missing or ambiguous. Refresh the order page.');
         controls[0].click();
       }
-      const nativeDefault = await waitFor(DEFAULT);
-      if (orderId() !== id) throw new Error('The order changed before the slip downloaded.');
+      const nativeDefault = await waitFor(DEFAULT, request);
+      ensureCurrent(request);
       nativeDefault.click();
       showProgress('Printing packing slip + address label…');
     } catch (error) {
-      if (active) {
-        await chrome.runtime.sendMessage({ type: 'TCGPRINT_CANCEL', orderId: active.orderId, token: active.token }).catch(() => {});
-        finish({ ok: false, error: error.message, setup: error.setup });
-      } else { button.disabled = false; button.setAttribute('aria-busy', 'false'); showError(error.message, error.setup); }
+      if (request && active === request) {
+        chrome.runtime.sendMessage({ type: 'TCGPRINT_CANCEL', orderId: request.orderId, token: request.token }).catch(() => {});
+        finish({ ok: false, error: error.message, setup: error.setup }, request);
+      } else if (!request) {
+        button.disabled = false; button.setAttribute('aria-busy', 'false'); showError(error.message, error.setup);
+      }
     }
   }
   window.addEventListener('message', async event => {
     if (event.source !== window || event.origin !== location.origin || !active || event.data?.type !== 'TCGPRINT_PDF_BRIDGE' || event.data.token !== active.token || event.data.orderId !== active.orderId) return;
     const request = active;
+    if (request.phase !== 'capturing') return;
     try {
+      ensureCurrent(request);
+      request.phase = 'handoff';
       const response = await chrome.runtime.sendMessage({ type: 'TCGPRINT_PDF', orderId: request.orderId, token: request.token, pdfBase64: event.data.pdfBase64 });
-      if (active?.token === request.token) finish(response);
-    } catch (error) { if (active?.token === request.token) finish({ ok: false, error: error.message }); }
+      if (active?.token === request.token) finish(response, request);
+    } catch (error) {
+      if (active === request) {
+        chrome.runtime.sendMessage({ type: 'TCGPRINT_CANCEL', orderId: request.orderId, token: request.token }).catch(() => {});
+        finish({ ok: false, error: error.message }, request);
+      }
+    }
   });
   chrome.runtime.onMessage.addListener((message, sender) => {
     if (message?.type === 'TCGPRINT_STATUS' && sender.id === chrome.runtime.id && active?.token === message.token) finish(message);
   });
   function mount() {
+    checkPage();
     const controls = document.querySelectorAll(PACKING);
     const existing = document.getElementById('tcgprint-controls');
     if (controls.length !== 1) { if (existing) existing.remove(); return; }
@@ -129,5 +177,6 @@
     }
   }
   new MutationObserver(mount).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener('popstate', checkPage);
   mount();
 })();
