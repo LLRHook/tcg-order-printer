@@ -46,14 +46,20 @@ Order data stays on your computer. See [PRIVACY.md](PRIVACY.md).
 
 ```sh
 node --version        # Node 22, matching CI
+cargo --version       # Rust 1.93.1, pinned in rust-toolchain.toml
 npm test              # unit tests (node:test)
 npm run e2e           # isolated browser/native-host tests (prints nothing)
+npm run test:package  # Rust tests and independent ZIP parity/error checks (Python 3)
 npm run package       # dist/tcg-order-printer-<version>.zip for the Chrome Web Store
 ```
 
 The browser tests use the existing Playwright dependency and an already cached Chromium executable. To use another installed Chromium build that supports loading unpacked extensions, set `TCG_E2E_BROWSER` to its executable path. The test does not download a browser or install the real helper.
 
 Each browser run creates a temporary HOME, profile and native-host registration pointing only to a synthetic stub. The suite verifies that this stub receives a framed connection probe before allowing any print-request tests. The stub has no printing capability. All Seller Portal pages, orders and slips are synthetic, and external requests are blocked. Coverage includes malformed fields, mismatched slips, double clicks, navigation during the connection check or export, helper refusal codes, unrelated acknowledgements and a slip saved to temporary disk. These tests verify the extension and native-message contract; they do not prove real helper installation, CUPS operation or physical printing.
+
+`npm run package` invokes the Rust tool in `tools/packager` through the existing shell entry point. Rust selects the runtime files, writes the ZIP and replaces the output only after a complete build. Node still parses the manifest JSON and strips its development `key`; the browser extension remains JavaScript, HTML and CSS. No Rust code runs per click, and the native helper protocol is unchanged.
+
+The packager uses only the Rust standard library, with a locked, offline Cargo build. It writes a deterministic ZIP using stored entries, fixed timestamps and normalized permissions. It requires no system `zip` command. Files remain uncompressed, so the archive is larger than the previous compressed ZIP. Missing assets, malformed manifests, unsafe version strings, symlinked inputs/output directories and assets over the 64 MiB limit fail without replacing a previous package. Python's standard `zipfile` reader independently checks archive integrity and content parity in `test:package`.
 
 Load the folder unpacked at `chrome://extensions` (Developer mode). The manifest `key` pins the development ID to `pidblibebfmenlpcbnajfcdoikdldhgj`; the package script strips it because the Web Store assigns its own ID.
 
@@ -63,6 +69,7 @@ Load the folder unpacked at `chrome://extensions` (Developer mode). The manifest
 | `content.js` | Adds the button, drives the native export, relays the PDF |
 | `background.js` | Validates the sender and order, talks to the native helper |
 | `setup.html` | First-run setup and connection check |
+| `tools/packager` | Rust runtime-file collection, ZIP writer and atomic package output |
 
 ## Issues
 

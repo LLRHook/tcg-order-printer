@@ -4,3 +4,6 @@ dist/
 # Real packing slips contain buyer addresses.
 *.pdf
 !tests/fixtures/*.pdf
+
+# Rust packaging build outputs
+tools/packager/target/

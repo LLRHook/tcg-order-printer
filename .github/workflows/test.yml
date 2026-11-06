@@ -9,4 +9,7 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - run: cargo fmt --manifest-path tools/packager/Cargo.toml --check
+      - run: cargo clippy --locked --offline --manifest-path tools/packager/Cargo.toml --all-targets -- -D warnings
+      - run: npm run test:package
       - run: npm run package
