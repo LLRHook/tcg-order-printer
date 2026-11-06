@@ -10,7 +10,7 @@ A Chrome extension for TCGplayer sellers. One click on an order page prints the 
 2. The extension triggers TCGplayer's own **Print Default** export and captures the PDF in memory.
 3. The local [print helper](https://github.com/LLRHook/tcg-order-printer-helper) checks the slip is for that exact order, lays out an address label with your return address, and prints both.
 
-Clicking twice never double-prints the same click, and a slip for a different order is refused.
+Repeated clicks during a request export only one slip, and a slip for a different order is refused. Changing orders before handoff cancels the request. If the helper does not confirm the exact order and request, check the printer queue before retrying.
 
 ## Setup
 
@@ -24,6 +24,19 @@ Clicking twice never double-prints the same click, and a slip for a different or
 3. In the wizard, pick your label printer, enter your return address and paste the extension ID shown on the setup page.
 4. Restart the browser and click **Check connection**.
 
+The connection check requires helper protocol version 2 and a configured printer. Failures show a specific next step:
+
+| Problem | Fix |
+|---------|-----|
+| Helper missing or outdated | Run `./install.sh` in the current helper folder, restart the browser, then check again. |
+| Extension not allowed | Re-run the helper wizard with the ID shown on Setup, then restart the browser. |
+| Printer or return address missing | Complete that field in the helper wizard, then check again. |
+| Printer unavailable | Reconnect the printer or choose an available queue in the wizard. |
+| Previous submission or unexpected acknowledgement | Check the printer queue before retrying. The job may already have been submitted. |
+| Packing slip changed for a previous request | Stop retrying. Verify the order and slip and check the printer queue before starting a new request. |
+
+Errors appear beside **Print both** and in the popup. Setup also shows the stable error code. Raw helper diagnostics are kept out of the interface. Malformed helper failures require a connection or queue check; they never establish that nothing printed. A slip saved to disk is never used as a print input; refresh the order page and try the capture again.
+
 Works in Chrome, Edge, Brave, Arc, Vivaldi, Chromium and Helium on macOS with any CUPS printer that takes 4×6 labels (tested on a Munbyn RW403B).
 
 ## Privacy
@@ -33,10 +46,21 @@ Order data stays on your computer. See [PRIVACY.md](PRIVACY.md).
 ## Development
 
 ```sh
+node --version        # Node 22, matching CI
+cargo --version       # Rust 1.93.1, pinned in rust-toolchain.toml
 npm test              # unit tests (node:test)
-npm run e2e           # browser test against the installed helper (prints nothing)
+npm run e2e           # isolated browser/native-host tests (prints nothing)
+npm run test:package  # Rust tests and independent ZIP parity/error checks (Python 3)
 npm run package       # dist/tcg-order-printer-<version>.zip for the Chrome Web Store
 ```
+
+The browser tests use the existing Playwright dependency and an already cached Chromium executable. To use another installed Chromium build that supports loading unpacked extensions, set `TCG_E2E_BROWSER` to its executable path. The test does not download a browser or install the real helper.
+
+Each browser run creates a temporary HOME, profile and native-host registration pointing only to a synthetic stub. The suite verifies that this stub receives a framed connection probe before allowing any print-request tests. The stub has no printing capability. All Seller Portal pages, orders and slips are synthetic, and external requests are blocked. Coverage includes malformed fields, mismatched slips, double clicks, navigation during the connection check or export, helper refusal codes, unrelated acknowledgements and a slip saved to temporary disk. These tests verify the extension and native-message contract; they do not prove real helper installation, CUPS operation or physical printing.
+
+`npm run package` invokes the Rust tool in `tools/packager` through the existing shell entry point. Rust selects the runtime files, writes the ZIP and replaces the output only after a complete build. Node still parses the manifest JSON and strips its development `key`; the browser extension remains JavaScript, HTML and CSS. No Rust code runs per click, and the native helper protocol is unchanged.
+
+The packager uses only the Rust standard library, with a locked, offline Cargo build. It writes a deterministic ZIP using stored entries, fixed timestamps and normalized permissions. It requires no system `zip` command. Files remain uncompressed, so the archive is larger than the previous compressed ZIP. Missing assets, malformed manifests, unsafe version strings, symlinked inputs/output directories and assets over the 64 MiB limit fail without replacing a previous package. Python's standard `zipfile` reader independently checks archive integrity and content parity in `test:package`.
 
 Load the folder unpacked at `chrome://extensions` (Developer mode). The manifest `key` pins the development ID to `pidblibebfmenlpcbnajfcdoikdldhgj`; the package script strips it because the Web Store assigns its own ID.
 
@@ -46,6 +70,7 @@ Load the folder unpacked at `chrome://extensions` (Developer mode). The manifest
 | `content.js` | Adds the button, drives the native export, relays the PDF |
 | `background.js` | Validates the sender and order, talks to the native helper |
 | `setup.html` | First-run setup and connection check |
+| `tools/packager` | Rust runtime-file collection, ZIP writer and atomic package output |
 
 ## Issues
 

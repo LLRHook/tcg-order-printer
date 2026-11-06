@@ -1,11 +1,11 @@
 const $ = id => document.getElementById(id);
-const STATES = { completed: 'printed', submitted: 'sent to printer', duplicate: 'already printed' };
+const STATES = { completed: 'printed', submitted: 'sent to printer', duplicate: 'already sent' };
 async function lastResult() {
   try {
     const { lastResult: r } = await chrome.storage.local.get('lastResult');
     if (!r) { $('last').textContent = 'Nothing printed yet.'; return; }
     const when = new Date(r.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-    $('last').textContent = `Last: ${r.orderId} — ${r.ok ? STATES[r.state] || r.state : r.error} (${when})`;
+    $('last').textContent = `Last: ${r.orderId} · ${r.ok ? STATES[r.state] || r.state : r.error} (${when})`;
   } catch { $('last').textContent = ''; }
 }
 async function check() {
@@ -14,7 +14,7 @@ async function check() {
     const r = await chrome.runtime.sendMessage({ type: 'TCGPRINT_PING' });
     if (r?.ok) el.textContent = `Ready · ${r.printer}`;
     else { el.textContent = r?.error || 'The print helper did not respond.'; el.className = 'bad'; }
-  } catch (error) { el.textContent = error.message; el.className = 'bad'; }
+  } catch { el.textContent = 'Open Setup and check the helper connection.'; el.className = 'bad'; }
   await lastResult();
 }
 $('check').addEventListener('click', check);

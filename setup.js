@@ -11,8 +11,8 @@ async function check() {
   try {
     const r = await chrome.runtime.sendMessage({ type: 'TCGPRINT_PING' });
     if (r?.ok) render('ok', 'Ready to print', `Labels go to ${r.printer}. Open an order in the Seller Portal and click Print both.`);
-    else render('bad', r?.error || 'The print helper did not respond.', r?.setup ? 'Follow the steps below, then check again.' : 'Re-run ./install.sh, then check again.');
-  } catch (error) { render('bad', 'The print helper did not respond.', error.message); }
+    else render('bad', r?.error || 'The print helper did not respond.', r?.code ? `Error code: ${r.code}` : 'Open the helper folder, run ./install.sh, then check again.');
+  } catch { render('bad', 'The extension could not check the helper.', 'Reload the extension, reopen Setup, and check the connection.'); }
 }
 $('check').addEventListener('click', check);
 document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
