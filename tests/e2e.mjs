@@ -150,6 +150,13 @@ test('a mismatched slip is refused with its stable code and visible recovery ste
   assert.equal(downloads.length, 0);
   const last = await worker.evaluate(async () => (await chrome.storage.local.get('lastResult')).lastResult);
   assert.equal(last.code, 'PDF_ORDER_MISMATCH');
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `error status must fit at ${width}px`);
+    assert.equal(await page.locator('#tcgprint-status').isVisible(), true);
+  }
+  await page.focus('#tcgprint-button');
+  assert.equal(await page.getAttribute('#tcgprint-button', 'aria-busy'), 'false');
 });
 
 for (const code of ['INVALID_MESSAGE', 'INVALID_ORDER_REQUEST', 'INVALID_PRINT_REQUEST', 'PDF_BYTES_REQUIRED', 'INVALID_PDF_ENCODING', 'INVALID_OR_INCOMPLETE_PDF', 'UNSUPPORTED_PACKING_SLIP', 'REQUEST_ID_ORDER_MISMATCH', 'PREVIOUS_SUBMISSION_NEEDS_QUEUE_CHECK', 'PRINTER_JOB_CANCELLED_OR_ABORTED', 'LOCAL_PRINT_HELPER_ERROR']) {

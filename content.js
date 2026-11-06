@@ -10,7 +10,7 @@
     const path = location.pathname.match(/^\/orders\/([^/]+)\/?$/);
     const heading = document.querySelector(HEADER)?.textContent.trim().match(/^Order:\s*([A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+)/i);
     const id = path && decodeURIComponent(path[1]).toUpperCase();
-    if (!id || !/^[A-Z0-9]{8}-[A-Z0-9]{6}-[A-Z0-9]{5}$/.test(id) || heading?.[1].toUpperCase() !== id) throw new Error('The order heading and page address do not match.');
+    if (!id || !/^[A-Z0-9]{8}-[A-Z0-9]{6}-[A-Z0-9]{5}$/.test(id) || heading?.[1].toUpperCase() !== id) throw new Error('The order heading and page address do not match. Refresh the correct order page and try again.');
     return id;
   }
   function resetButton(button) {
@@ -45,10 +45,10 @@
       ensureCurrent(request);
       const found = [...document.querySelectorAll(selector)].filter(el => el.getClientRects().length && !el.disabled);
       if (found.length === 1) return found[0];
-      if (found.length > 1) throw new Error('The Print Default control is ambiguous.');
+      if (found.length > 1) throw new Error('The Print Default control is ambiguous. Refresh the order page and try again.');
       await new Promise(resolve => setTimeout(resolve, 80));
     }
-    throw new Error('The Print Default control was not found.');
+    throw new Error('The Print Default control was not found. Refresh the order page and try again.');
   }
   function ensureCurrent(request) {
     if (active !== request) throw new Error('The print request was cancelled.');
