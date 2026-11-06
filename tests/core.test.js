@@ -42,3 +42,13 @@ test('describeError maps Chrome and helper errors to setup guidance', () => {
   assert.equal(describeError('FUTURE_STABLE_CODE').code, 'FUTURE_STABLE_CODE');
   assert.match(describeError('FUTURE_STABLE_CODE').message, /queue/);
 });
+
+test('a changed-PDF replay preserves its code and requires verification before a new request', () => {
+  const refusal = describeError('REQUEST_ID_PDF_MISMATCH');
+  assert.equal(refusal.code, 'REQUEST_ID_PDF_MISMATCH');
+  assert.equal(refusal.setup, false);
+  assert.match(refusal.message, /stop retrying/i);
+  assert.match(refusal.message, /verify the order and slip/i);
+  assert.match(refusal.message, /printer queue/i);
+  assert.doesNotMatch(refusal.message, /nothing was printed/i);
+});

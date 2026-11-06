@@ -43,6 +43,7 @@ const ERROR_TEXT = {
   PDF_BYTES_REQUIRED: 'No packing slip was captured. Nothing was printed. Refresh the order page and try again.',
   INVALID_PDF_ENCODING: 'The captured packing slip could not be decoded. Nothing was printed. Refresh the order page and try again.',
   REQUEST_ID_ORDER_MISMATCH: 'This request belongs to a different order. Nothing was printed. Refresh the correct order page and try again.',
+  REQUEST_ID_PDF_MISMATCH: 'The packing slip changed for a previous request. Stop retrying. Verify the order and slip and check the printer queue before starting a new request.',
   PREVIOUS_SUBMISSION_NEEDS_QUEUE_CHECK: 'A previous print of this order needs checking. Check the printer queue before trying again.',
   PRINTER_JOB_CANCELLED_OR_ABORTED: 'The printer cancelled the job. Check the printer and queue before trying again.',
   HELPER_PROTOCOL_UNSUPPORTED: 'The print helper needs updating. Install the current helper with ./install.sh, restart the browser, then check the connection.',

@@ -30,7 +30,12 @@ async function native(message) {
   let result;
   try { result = await chrome.runtime.sendNativeMessage(HOST, message); }
   catch (error) { throw new Error(error?.message); }
-  if (result?.ok !== true) throw new Error(result?.ok === false ? result.error || 'LOCAL_PRINT_HELPER_ERROR' : message.command === 'ping' ? 'INVALID_HELPER_RESPONSE' : 'HELPER_RESPONSE_MISMATCH');
+  if (result?.ok !== true) {
+    // Only an actual stable string code establishes a helper refusal. Coercing
+    // malformed fields could turn an uncertain submission into retry guidance.
+    if (result?.ok === false && typeof result.error === 'string' && /^[A-Z][A-Z0-9_]{1,79}$/.test(result.error)) throw new Error(result.error);
+    throw new Error(message.command === 'ping' ? 'INVALID_HELPER_RESPONSE' : 'HELPER_RESPONSE_MISMATCH');
+  }
   if (message.command === 'ping') {
     if (result.protocolVersion !== PROTOCOL_VERSION) throw new Error('HELPER_PROTOCOL_UNSUPPORTED');
     if (result.state !== 'ready' || typeof result.printer !== 'string' || !result.printer.trim()) throw new Error('INVALID_HELPER_RESPONSE');

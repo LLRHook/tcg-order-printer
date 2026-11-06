@@ -33,8 +33,9 @@ The connection check requires helper protocol version 2 and a configured printer
 | Printer or return address missing | Complete that field in the helper wizard, then check again. |
 | Printer unavailable | Reconnect the printer or choose an available queue in the wizard. |
 | Previous submission or unexpected acknowledgement | Check the printer queue before retrying. The job may already have been submitted. |
+| Packing slip changed for a previous request | Stop retrying. Verify the order and slip and check the printer queue before starting a new request. |
 
-Errors appear beside **Print both** and in the popup. Setup also shows the stable error code. Raw helper diagnostics are kept out of the interface. A slip saved to disk is never used as a print input; refresh the order page and try the capture again.
+Errors appear beside **Print both** and in the popup. Setup also shows the stable error code. Raw helper diagnostics are kept out of the interface. Malformed helper failures require a connection or queue check; they never establish that nothing printed. A slip saved to disk is never used as a print input; refresh the order page and try the capture again.
 
 Works in Chrome, Edge, Brave, Arc, Vivaldi, Chromium and Helium on macOS with any CUPS printer that takes 4×6 labels (tested on a Munbyn RW403B).
 

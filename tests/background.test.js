@@ -165,8 +165,30 @@ test('connection checks reject an old protocol or incomplete readiness response'
   }
 });
 
+test('malformed native print failures require a queue check instead of retry-safe refusal', async () => {
+  for (const error of [['PDF_ORDER_MISMATCH'], { code: 'PDF_ORDER_MISMATCH' }, null, '', 42, 'PDF_ORDER_MISMATCH\n']) {
+    const app = background(message => message.command === 'ping'
+      ? { ok: true, state: 'ready', protocolVersion: 2, printer: 'Synthetic_Test_Queue' }
+      : { ok: false, error });
+    assert.equal((await app.arm()).ok, true);
+    const result = await app.request({ type: 'TCGPRINT_PDF', orderId: ORDER, token: TOKEN, pdfBase64: 'JVBERi0=' });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'HELPER_RESPONSE_MISMATCH');
+    assert.match(result.error, /queue.*may already have been submitted/i);
+    assert.doesNotMatch(result.error, /nothing was printed/i);
+  }
+});
+
+test('malformed native ping failures cannot masquerade as a print refusal', async () => {
+  const app = background(() => ({ ok: false, error: ['PDF_ORDER_MISMATCH'] }));
+  const result = await app.arm();
+  assert.equal(result.code, 'INVALID_HELPER_RESPONSE');
+  assert.equal(result.setup, true);
+  assert.equal(app.session.pending, undefined);
+});
+
 test('native error codes are preserved and private diagnostic text is hidden', async () => {
-  for (const code of ['REQUEST_ID_ORDER_MISMATCH', 'INVALID_ORDER_REQUEST', 'INVALID_PRINT_REQUEST', 'PDF_BYTES_REQUIRED', 'INVALID_PDF_ENCODING', 'PDF_ORDER_MISMATCH', 'PREVIOUS_SUBMISSION_NEEDS_QUEUE_CHECK']) {
+  for (const code of ['REQUEST_ID_ORDER_MISMATCH', 'REQUEST_ID_PDF_MISMATCH', 'INVALID_ORDER_REQUEST', 'INVALID_PRINT_REQUEST', 'PDF_BYTES_REQUIRED', 'INVALID_PDF_ENCODING', 'PDF_ORDER_MISMATCH', 'PREVIOUS_SUBMISSION_NEEDS_QUEUE_CHECK']) {
     const app = background(message => message.command === 'ping'
       ? { ok: true, state: 'ready', protocolVersion: 2, printer: 'Synthetic_Test_Queue' }
       : { ok: false, error: code });
